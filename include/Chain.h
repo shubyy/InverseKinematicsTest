@@ -30,5 +30,5 @@ public:
     Eigen::Vector2f calculateEffectorPosition();
     Eigen::Vector2f calculateSegmentPosition(int jointIndex);
 
-    void solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numIterations);
+    void solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numIterations, bool alternate = false);
 };

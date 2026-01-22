@@ -16,7 +16,6 @@ add_compile_options(--debug)
 
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(InverseKinematicsTest ${SOURCE_FILES})
-LINK_DIRECTORIES(/usr/local/lib/)
 target_include_directories(InverseKinematicsTest PRIVATE /usr/local/include/ /usr/local/include/eigen3 include/)
 target_link_directories(InverseKinematicsTest PRIVATE /usr/local/lib/)
 target_link_libraries(InverseKinematicsTest -lSDL3 -leigen_blas)

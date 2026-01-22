@@ -109,7 +109,7 @@ Eigen::Vector2f Chain::calculateSegmentPosition(int segmentIndex)
     return current;
 }
 
-void Chain::solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numIterations)
+void Chain::solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numIterations, bool alternate)
 {
     bool solved = false;
     for(int i = 0; i < numIterations; i++) {
@@ -118,33 +118,64 @@ void Chain::solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numI
             break;
         }
 
-        for(int j = 0; j < m_segments.size(); j++) {
-            // Get angle between joint-effector & joint-target
-            Eigen::Vector2f currentPos = calculateEffectorPosition();
-            Eigen::Vector2f jointPos = calculateSegmentPosition(j);
+        if(!alternate) {
+            for(int j = (m_segments.size() - 1); j >= 0; j--) {
+                // Get angle between joint-effector & joint-target
+                Eigen::Vector2f currentPos = calculateEffectorPosition();
+                Eigen::Vector2f jointPos = calculateSegmentPosition(j);
 
-            if((currentPos - targetPos).norm() < 1.0f )
-                solved = true;
+                if((currentPos - targetPos).norm() < 1.0f )
+                    solved = true;
 
-            Eigen::Vector2f targetVec = ( targetPos - jointPos ).normalized();
-            Eigen::Vector2f effVec = ( currentPos - jointPos ).normalized();
+                Eigen::Vector2f targetVec = ( targetPos - jointPos ).normalized();
+                Eigen::Vector2f effVec = ( currentPos - jointPos ).normalized();
 
-            //float dotP = glm::dot(effVec, targetVec);
-            float dotP = effVec.dot(targetVec);
-            float crossP = effVec.cross(targetVec);
+                //float dotP = glm::dot(effVec, targetVec);
+                float dotP = effVec.dot(targetVec);
+                float crossP = effVec.cross(targetVec);
 
-            float costheta =  dotP / (targetVec.norm() * effVec.norm());
-            float theta = acos(costheta);
+                float costheta =  dotP / (targetVec.norm() * effVec.norm());
+                float theta = acos(costheta);
 
-            //printf("Segment %d dot product: %.2f\n",  );
+                //printf("Segment %d dot product: %.2f\n",  );
 
-            if(std::isnan(theta))
-                break;
+                if(std::isnan(theta))
+                    break;
 
-            float sign = crossP > 0 ? 1.0f : -1.0f;
+                float sign = crossP > 0 ? 1.0f : -1.0f;
 
-            m_segments[j].rot += (sign * theta) / 5.0f;
+                m_segments[j].rot += (sign * theta) / 5.0f;
+            }
+        } else {
+            for(int j = 0; j < m_segments.size(); j++) {
+                // Get angle between joint-effector & joint-target
+                Eigen::Vector2f currentPos = calculateEffectorPosition();
+                Eigen::Vector2f jointPos = calculateSegmentPosition(j);
+
+                if((currentPos - targetPos).norm() < 1.0f )
+                    solved = true;
+
+                Eigen::Vector2f targetVec = ( targetPos - jointPos ).normalized();
+                Eigen::Vector2f effVec = ( currentPos - jointPos ).normalized();
+
+                //float dotP = glm::dot(effVec, targetVec);
+                float dotP = effVec.dot(targetVec);
+                float crossP = effVec.cross(targetVec);
+
+                float costheta =  dotP / (targetVec.norm() * effVec.norm());
+                float theta = acos(costheta);
+
+                //printf("Segment %d dot product: %.2f\n",  );
+
+                if(std::isnan(theta))
+                    break;
+
+                float sign = crossP > 0 ? 1.0f : -1.0f;
+
+                m_segments[j].rot += (sign * theta) / 5.0f;
+            }
         }
+
     }
 
 }
