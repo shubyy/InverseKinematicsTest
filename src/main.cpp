@@ -5,7 +5,6 @@
 #include "Chain.h"
 
 #include <unistd.h>
-#include <iostream>
 
 int main()
 {
@@ -27,15 +26,6 @@ int main()
     customChain.addSegment(40.0f, M_PI / 4.0f);
     customChain.addSegment(20.0f, M_PI / 4.0f);
 
-    //printf("Target Distance: %f\n", glm::length(target - glm::vec2(50.0f, 250.0f)));
-    Eigen::Vector2f target(500, 400);
-    //customChain.solveForTargetIKWithCCD(target, 40);
-
-    float point[2];
-    point[0] = target(0);
-    point[1] = target(1);
-    WindowPoint targetPoint(point, 3.0f);
-
     while (!window.shouldQuit()){
         window.clear();
 
@@ -44,9 +34,6 @@ int main()
 
         customChain.solveForTargetIKWithCCD(Eigen::Vector2f(targetX, targetY), 10);
         customChain.drawChain(window, chainColour);
-
-        window.drawPoint(targetPoint, targetColour);
-
 
         window.runWindowLoop();
 
