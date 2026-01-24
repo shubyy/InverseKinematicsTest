@@ -1,9 +1,7 @@
 #pragma once
-
-#include <vector>
-#include "DisplayWindow.h"
-
 #include <Eigen/Core>
+#include "DisplayWindow.h"
+#include <vector>
 
 struct segment
 {
@@ -28,7 +26,8 @@ public:
     void drawChain(DisplayWindow& window, COLOUR& c);
 
     Eigen::Vector2f calculateEffectorPosition();
-    Eigen::Vector2f calculateSegmentPosition(int jointIndex);
+    Eigen::Vector2f calculateSegmentEndPosition(int jointIndex);
+    Eigen::Vector2f calculateSegmentStartPosition(int jointIndex);
 
-    void solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numIterations, bool alternate = false);
+    void solveForTargetIKWithCCD(float targetX, float targetY, unsigned int numIterations, float tolerance = 1.0f);
 };

@@ -25,59 +25,64 @@ static Eigen::Matrix3f createTranslationMatrix(Eigen::Vector2f translation)
     return Eigen::Affine2f(Eigen::Translation2f(translation)).matrix();
 }
 
+static Eigen::Matrix3f createRotationMatrix(float rotation)
+{
+    return Eigen::Matrix3f(Eigen::AngleAxisf(rotation, Eigen::Vector3f(0, 0, 1)).toRotationMatrix());
+}
+
 void Chain::drawChain(DisplayWindow &window, COLOUR &c)
 {
+    float start[2], end[2];
     Eigen::Vector2f current = m_origin;
-    float totalRotf = 0.0f;
-    for(const auto& seg : m_segments) {
-        totalRotf += seg.rot;
-        Eigen::Matrix3f reverseTranslate = createTranslationMatrix(current);
-        Eigen::Matrix3f rotMat = Eigen::Matrix3f(Eigen::AngleAxisf(totalRotf, Eigen::Vector3f(0, 0, 1)).toRotationMatrix());
-        Eigen::Matrix3f translate = createTranslationMatrix(-current);
 
-        Eigen::Vector3f end_1 = Eigen::Vector3f(current(0) + seg.length, current(1), 1);
+    for(int i = 0; i < m_segments.size(); i++) {
+        Eigen::Vector2f segmentEndPos = calculateSegmentEndPosition(i);
 
-        end_1 = translate * end_1;
-        end_1 = rotMat * end_1;
-        end_1 = reverseTranslate * end_1;
-
-        float start[2], end[2];
-        end[0] = end_1(0);
-        end[1] = end_1(1);
+        end[0] = segmentEndPos(0);
+        end[1] = segmentEndPos(1);
 
         start[0] = current(0);
         start[1] = current(1);
 
         WindowLine x(start, end);
         window.drawLine(x, c);
-        current = Eigen::Vector2f(end_1.x(), end_1.y());
+
+        current = segmentEndPos;
     }
 }
 
 Eigen::Vector2f Chain::calculateEffectorPosition()
 {
+    return calculateSegmentEndPosition(m_segments.size() - 1);
+}
+
+static Eigen::Vector2f rotatePointAroundPoint(Eigen::Vector2f position, Eigen::Vector2f joint, float rotation)
+{
+    Eigen::Matrix3f trMat = createTranslationMatrix(joint) * createRotationMatrix(rotation) * createTranslationMatrix(-joint);
+    return (trMat * Eigen::Vector3f(position(0), position(1), 1)).head<2>();
+}
+
+Eigen::Vector2f Chain::calculateSegmentStartPosition(int segmentIndex)
+{
+    if(segmentIndex >= m_segments.size() || segmentIndex < 0)
+        return Eigen::Vector2f(0);
+
     Eigen::Vector2f current = m_origin;
     float totalRotf = 0.0f;
-    for(const auto& seg : m_segments) {
+
+    int currentindex = 0;
+
+    while(currentindex < segmentIndex) {
+        segment& seg = m_segments[currentindex++];
         totalRotf += seg.rot;
-        Eigen::Matrix3f reverseTranslate = createTranslationMatrix(current);
-        Eigen::Matrix3f rotMat = Eigen::Matrix3f(Eigen::AngleAxisf(totalRotf, Eigen::Vector3f(0, 0, 1)).toRotationMatrix());
-        Eigen::Matrix3f translate = createTranslationMatrix(-current);
 
-        Eigen::Vector3f end_1 = Eigen::Vector3f(current(0) + seg.length, current(1), 1);
-
-        end_1 = translate * end_1;
-        end_1 = rotMat * end_1;
-        end_1 = reverseTranslate * end_1;
-
-        current(0) = end_1(0);
-        current(1) = end_1(1);
+        current = rotatePointAroundPoint(current + Eigen::Vector2f(seg.length, 0), current, totalRotf);
     }
 
     return current;
 }
 
-Eigen::Vector2f Chain::calculateSegmentPosition(int segmentIndex)
+Eigen::Vector2f Chain::calculateSegmentEndPosition(int segmentIndex)
 {
     if(segmentIndex >= m_segments.size() || segmentIndex < 0)
         return Eigen::Vector2f(0);
@@ -88,94 +93,46 @@ Eigen::Vector2f Chain::calculateSegmentPosition(int segmentIndex)
     int currentindex = 0;
 
     do {
-        segment& seg = m_segments[currentindex++];
+        segment& seg = m_segments[currentindex];
         totalRotf += seg.rot;
 
-        Eigen::Matrix3f reverseTranslate = createTranslationMatrix(current);
-        Eigen::Matrix3f rotMat = Eigen::Matrix3f(Eigen::AngleAxisf(totalRotf, Eigen::Vector3f(0, 0, 1)).toRotationMatrix());
-        Eigen::Matrix3f translate = createTranslationMatrix(-current);
-
-        Eigen::Vector3f end_1 = Eigen::Vector3f(current(0) + seg.length, current(1), 1);
-
-        end_1 = translate * end_1;
-        end_1 = rotMat * end_1;
-        end_1 = reverseTranslate * end_1;
-
-        current(0) = end_1(0);
-        current(1) = end_1(1);
+        current = rotatePointAroundPoint(current + Eigen::Vector2f(seg.length, 0), current, totalRotf);
     }
-    while(currentindex < segmentIndex);
+    while(currentindex++ < segmentIndex);
 
     return current;
 }
 
-void Chain::solveForTargetIKWithCCD(Eigen::Vector2f targetPos, unsigned int numIterations, bool alternate)
+void Chain::solveForTargetIKWithCCD(float targetX, float targetY, unsigned int numIterations, float tolerance)
 {
     bool solved = false;
-    for(int i = 0; i < numIterations; i++) {
-        if(solved) {
-            printf("Iterations needed: %d\n", i);
-            break;
-        }
+    Eigen::Vector2f targetPos(targetX, targetY);
 
-        if(!alternate) {
-            for(int j = (m_segments.size() - 1); j >= 0; j--) {
-                // Get angle between joint-effector & joint-target
-                Eigen::Vector2f currentPos = calculateEffectorPosition();
-                Eigen::Vector2f jointPos = calculateSegmentPosition(j);
+    for(int i = 0; i < numIterations && !solved; i++) {
+        for(int j = m_segments.size(); j > 0; j--) {
+            // Get angle between joint-effector & joint-target
+            Eigen::Vector2f currentPos = calculateEffectorPosition();
+            Eigen::Vector2f jointPos = calculateSegmentStartPosition(j - 1);
 
-                if((currentPos - targetPos).norm() < 1.0f )
-                    solved = true;
-
-                Eigen::Vector2f targetVec = ( targetPos - jointPos ).normalized();
-                Eigen::Vector2f effVec = ( currentPos - jointPos ).normalized();
-
-                //float dotP = glm::dot(effVec, targetVec);
-                float dotP = effVec.dot(targetVec);
-                float crossP = effVec.cross(targetVec);
-
-                float costheta =  dotP / (targetVec.norm() * effVec.norm());
-                float theta = acos(costheta);
-
-                //printf("Segment %d dot product: %.2f\n",  );
-
-                if(std::isnan(theta))
-                    break;
-
-                float sign = crossP > 0 ? 1.0f : -1.0f;
-
-                m_segments[j].rot += (sign * theta) / 5.0f;
+            if((currentPos - targetPos).norm() < tolerance ) {
+                solved = true;
+                continue;
             }
-        } else {
-            for(int j = 0; j < m_segments.size(); j++) {
-                // Get angle between joint-effector & joint-target
-                Eigen::Vector2f currentPos = calculateEffectorPosition();
-                Eigen::Vector2f jointPos = calculateSegmentPosition(j);
 
-                if((currentPos - targetPos).norm() < 1.0f )
-                    solved = true;
+            Eigen::Vector2f targetVec = ( targetPos - jointPos ).normalized();
+            Eigen::Vector2f effVec = ( currentPos - jointPos ).normalized();
 
-                Eigen::Vector2f targetVec = ( targetPos - jointPos ).normalized();
-                Eigen::Vector2f effVec = ( currentPos - jointPos ).normalized();
+            float dotP = effVec.dot(targetVec);
+            float crossP = effVec.cross(targetVec);
 
-                //float dotP = glm::dot(effVec, targetVec);
-                float dotP = effVec.dot(targetVec);
-                float crossP = effVec.cross(targetVec);
+            float costheta =  dotP / (targetVec.norm() * effVec.norm());
+            float theta = acos(costheta);
 
-                float costheta =  dotP / (targetVec.norm() * effVec.norm());
-                float theta = acos(costheta);
+            if(std::isnan(theta))
+                break;
 
-                //printf("Segment %d dot product: %.2f\n",  );
-
-                if(std::isnan(theta))
-                    break;
-
-                float sign = crossP > 0 ? 1.0f : -1.0f;
-
-                m_segments[j].rot += (sign * theta) / 5.0f;
-            }
+            float sign = crossP > 0.0f ? 1.0f : -1.0f;
+            m_segments[j - 1].rot += (sign * theta) / 5.0f;
         }
-
     }
-
 }
