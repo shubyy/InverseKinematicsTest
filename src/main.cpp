@@ -5,19 +5,18 @@
 
 int main()
 {
-    DisplayWindow window("Inverse Kinematics Test", 800, 500);
-
-    Chain customChain1(400.0f, 250.0f);
-
     COLOUR backColour{0, 0, 0, SDL_ALPHA_OPAQUE};
     COLOUR chain1Colour{255, 0, 0, SDL_ALPHA_OPAQUE};
     COLOUR targetColour{255, 0, 255, SDL_ALPHA_OPAQUE};
 
+    DisplayWindow window("Inverse Kinematics Test", 800, 500);
     window.setClearColour(backColour);
+
+    Chain customChain1(400.0f, 250.0f);
 
     //add segments
     customChain1.addSegment(40.0f, M_PI / 4.0f);
-    //customChain1.addSegment(40.0f, 0);
+    customChain1.addSegment(40.0f, 0);
     customChain1.addSegment(40.0f, 0);
     customChain1.addSegment(40.0f, 0);
     customChain1.addSegment(40.0f, 0.0f);
