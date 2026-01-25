@@ -3,10 +3,14 @@
 #include "DisplayWindow.h"
 #include <vector>
 
+#define MIN_LIMIT_INDEX     0
+#define MAX_LIMIT_INDEX     1
+
 struct segment
 {
     float length;
     float rot;
+    float limits[2];
 };
 
 class Chain
@@ -19,7 +23,7 @@ private:
 public:
     Chain(int origin_x, int origin_y);
 
-    void addSegment(float length, float rotation);
+    bool addSegment(float length, float init_rotation, float limit1 = -M_PI, float limit2 = M_PI);
 
     void rotateSegment(int segmentIdx, float amount);
 

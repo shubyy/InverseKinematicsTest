@@ -15,13 +15,13 @@ int main()
     Chain customChain1(400.0f, 250.0f);
 
     //add segments
-    customChain1.addSegment(40.0f, M_PI / 4.0f);
-    customChain1.addSegment(40.0f, 0);
-    customChain1.addSegment(40.0f, 0);
-    customChain1.addSegment(40.0f, 0);
-    customChain1.addSegment(40.0f, 0.0f);
-    customChain1.addSegment(40.0f, M_PI / 4.0f);
-    customChain1.addSegment(20.0f, M_PI / 4.0f);
+    customChain1.addSegment(40.0f, M_PI / 8.0f, -M_PI_2, M_PI_2);
+    customChain1.addSegment(40.0f, 0, -M_PI_2, M_PI_2);
+    customChain1.addSegment(40.0f, 0, -M_PI_4, M_PI_4);
+    customChain1.addSegment(40.0f, 0, -M_PI_4, M_PI_4);
+    customChain1.addSegment(40.0f, 0.0f, -M_PI_4, M_PI_4);
+    customChain1.addSegment(40.0f, M_PI / 8.0f, -M_PI_4, M_PI_4);
+    customChain1.addSegment(20.0f, M_PI / 8.0f, -M_PI_4, M_PI_4);
 
     while (!window.shouldQuit()){
         window.clear();

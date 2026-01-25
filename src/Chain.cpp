@@ -9,15 +9,31 @@ Chain::Chain(int origin_x, int origin_y)
     m_origin = Eigen::Vector2f(origin_x, origin_y);
 }
 
-void Chain::addSegment(float length, float rotation)
+bool Chain::addSegment(float length, float init_rotation, float limit1, float limit2)
 {
-    m_segments.push_back( segment(length, rotation) );
+    bool success = false;
+
+    // Verify limit values
+    // offset due to floating point imprecision
+    if( limit1 > (-M_PI - 0.00001)  && limit2 < (M_PI + 0.00001)) {
+        if(limit1 < limit2) {
+            float start_rot = fmax(fmin(init_rotation, limit2), limit1);
+            m_segments.push_back( segment(length, start_rot, {limit1, limit2} ) );
+            success = true;
+        }
+    }
+
+    return success;
 }
 
 void Chain::rotateSegment(int segmentIdx, float amount)
 {
-    if(m_segments.size() )
-        m_segments[segmentIdx].rot += amount;
+    if(m_segments.size() ) {
+        segment& seg = m_segments[segmentIdx];
+        seg.rot += amount;
+
+        seg.rot = fmax(fmin(seg.rot, seg.limits[MAX_LIMIT_INDEX]), seg.limits[MIN_LIMIT_INDEX]);
+    }
 }
 
 static Eigen::Matrix3f createTranslationMatrix(Eigen::Vector2f translation)
@@ -132,7 +148,7 @@ void Chain::solveForTargetIKWithCCD(float targetX, float targetY, unsigned int n
                 break;
 
             float sign = crossP > 0.0f ? 1.0f : -1.0f;
-            m_segments[j - 1].rot += (sign * theta) / 5.0f;
+            rotateSegment(j - 1, (sign * theta) / 5.0f);
         }
     }
 }
